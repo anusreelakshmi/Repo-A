@@ -2,8 +2,6 @@ name: Trigger Workflow in RepoB
 
 on:
   push:
-    branches:
-      - main  # Or any branch you prefer triggering this workflow from
 
 jobs:
   trigger-workflow:
