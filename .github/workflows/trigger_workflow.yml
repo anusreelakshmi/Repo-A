@@ -1,5 +1,6 @@
 name: Run Dynamic Number of Jobs
 on:
+  push:
   workflow_dispatch:
     inputs:
       number_of_jobs:
