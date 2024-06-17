@@ -7,31 +7,21 @@ jobs:
   generate-job-strategy-matrix:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Fetch all opened pull requests (non-draft) and their merge commit SHA'
+      - name: 'Fetch all opened pull requests and their merge commit SHAs'
         shell: bash
-        id: fetch_opened_pull_requests
+        id: fetch_all_opened_pull_requests
         run: |
-          pr_info=$(curl -s -H "Authorization: token ***" \
-            "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100")
-            
-          pr_numbers=()
-          pr_merge_shas=()
-            
-          while IFS= read -r line; do
-            draft=$(echo "$line" | jq -r '.draft')
-            if [ "$draft" == "false" ]; then
-              pr_number=$(echo "$line" | jq -r '.number')
-              pr_merge_sha=$(echo "$line" | jq -r '.merge_commit_sha')
-              pr_numbers+=("$pr_number")
-              pr_merge_shas+=("$pr_merge_sha")
-              echo "PR_NUMBER=$pr_number PR_MERGE_SHA=$pr_merge_sha"
-            fi
+          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" \
+          | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
+          
+          while read -r line; do
+            pr_number=$(echo "$line" | awk '{print $1}')
+            pr_merge_sha=$(echo "$line" | awk '{print $2}')
+            echo "$pr_number $pr_merge_sha" >> pr_matrix.txt
           done <<< "$pr_info"
-            
-          pr_number_matrix=$(IFS=,; echo "${pr_numbers[*]}")
-          pr_merge_sha_matrix=$(IFS=,; echo "${pr_merge_shas[*]}")
-            
-          echo "::set-output name=pr_number_matrix::$pr_number_matrix"
-          echo "::set-output name=pr_merge_sha_matrix::$pr_merge_sha_matrix"
+      
+          echo "Matrix of Pull Request Numbers and Merge SHAs:"
+          cat pr_matrix.txt
 
 
