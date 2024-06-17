@@ -11,12 +11,12 @@ jobs:
         shell: bash
         id: fetch_opened_pull_requests
         run: |
-          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100")
-      
+          pr_info=$(curl -s -H "Authorization: token ***" \
+            "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100")
+            
           pr_numbers=()
           pr_merge_shas=()
-          
+            
           while IFS= read -r line; do
             draft=$(echo "$line" | jq -r '.draft')
             if [ "$draft" == "false" ]; then
@@ -27,10 +27,10 @@ jobs:
               echo "PR_NUMBER=$pr_number PR_MERGE_SHA=$pr_merge_sha"
             fi
           done <<< "$pr_info"
-          
+            
           pr_number_matrix=$(IFS=,; echo "${pr_numbers[*]}")
           pr_merge_sha_matrix=$(IFS=,; echo "${pr_merge_shas[*]}")
-          
+            
           echo "::set-output name=pr_number_matrix::$pr_number_matrix"
           echo "::set-output name=pr_merge_sha_matrix::$pr_merge_sha_matrix"
 
