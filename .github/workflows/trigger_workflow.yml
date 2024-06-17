@@ -1,12 +1,11 @@
 name: Run Dynamic Number of Jobs
 on:
-  push:
   workflow_dispatch:
     inputs:
       number_of_jobs:
         description: "Number of Jobs"
         required: true
-        default: "10"
+        default: "10" # Ensure the default value is a string
 
 jobs:
   generate-job-strategy-matrix:
@@ -31,4 +30,4 @@ jobs:
       max-parallel: 1 # Run jobs serially
       # max-parallel: ${{ github.event.inputs.number_of_jobs }} # Run jobs in parallel
     steps:
-      - run: echo "This is job number ${{ matrix.jo
+      - run: echo "This is job number ${{ matrix.job }}"
