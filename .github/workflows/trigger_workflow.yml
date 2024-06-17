@@ -1,11 +1,12 @@
-name: Run Dynamic Number of Jobs
+name: Fetch PR Info and Checkout Merge Commits
+
 on:
-  push: 
-  workflow_dispatch:
-  
+  push:
+
 jobs:
-  generate-job-strategy-matrix:
+  fetch_pr_info_and_checkout:
     runs-on: ubuntu-latest
+    name: Fetch PR Info and Checkout Merge Commits
     steps:
       - name: 'Fetch all opened pull requests and their merge commit SHAs'
         shell: bash
@@ -27,5 +28,13 @@ jobs:
       
           echo "Matrix of Merge Commit SHAs:"
           cat pr_merge_shas.txt
+      
+      - name: Checkout Merge Commits
+        id: checkout_merge_commits
+        run: |
+          while read -r merge_sha; do
+            git checkout $merge_sha
+            # Perform any actions related to the specific merge commit here
+          done < pr_merge_shas.txt
 
-
+  # Add other jobs if needed...
