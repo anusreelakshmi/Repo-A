@@ -18,10 +18,14 @@ jobs:
           while read -r line; do
             pr_number=$(echo "$line" | awk '{print $1}')
             pr_merge_sha=$(echo "$line" | awk '{print $2}')
-            echo "$pr_number $pr_merge_sha" >> pr_matrix.txt
+            echo "$pr_number" >> pr_numbers.txt
+            echo "$pr_merge_sha" >> pr_merge_shas.txt
           done <<< "$pr_info"
       
-          echo "Matrix of Pull Request Numbers and Merge SHAs:"
-          cat pr_matrix.txt
+          echo "Matrix of Pull Request Numbers:"
+          cat pr_numbers.txt
+      
+          echo "Matrix of Merge Commit SHAs:"
+          cat pr_merge_shas.txt
 
 
