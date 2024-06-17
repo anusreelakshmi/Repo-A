@@ -2,33 +2,25 @@ name: Run Dynamic Number of Jobs
 on:
   push: 
   workflow_dispatch:
-    inputs:
-      number_of_jobs:
-        description: "Number of Jobs"
-        required: true
-        default: "10"  # Ensure the default value is a string
-
+  
 jobs:
   generate-job-strategy-matrix:
     runs-on: ubuntu-latest
-    outputs:
-      job-strategy-matrix: ${{ steps.generate.outputs.job-strategy-matrix }}
     steps:
-      - id: generate
+      - name: 'Fetch all opened pull requests (non-draft) and their merge commit SHA'
+        shell: bash
+        id: fetch_opened_pull_requests
         run: |
-          JOB_STRATEGY_MATRIX=$(node -e "let r=[]; for(let i = 1; i <= parseInt(process.env.NUMBER_OF_JOBS); i++) { r.push(i) }; console.log(JSON.stringify(r));")
-          echo "job-strategy-matrix=$JOB_STRATEGY_MATRIX" >> $GITHUB_ENV
+          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
+          | jq -r '.[] | select(.draft == false) | "\(.number) \(.merge_commit_sha)"')
+          
+          while read -r pr; do
+            pr_number=$(echo "$pr" | awk '{print $1}')
+            pr_merge_sha=$(echo "$pr" | awk '{print $2}')
+            echo "::set-output name=pr_number::$pr_number"
+            echo "::set-output name=pr_merge_sha::$pr_merge_sha"
+          done <<< "$pr_info"
         env:
-          NUMBER_OF_JOBS: ${{ github.event.inputs.number_of_jobs }}
-
-  job:
-    needs: generate-job-strategy-matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hour timeout
-    strategy:
-      matrix:
-        job: ${{ fromJson(needs.generate-job-strategy-matrix.outputs['job-strategy-matrix']) }}
-      max-parallel: 1  # Run jobs serially
-      # max-parallel: ${{ github.event.inputs.number_of_jobs }}  # Run jobs in parallel
-    steps:
-      - run: echo "This is job number ${{ matrix.job }}"
+          MATRIX_PR_NUMBER: ${{ steps.fetch_opened_pull_requests.outputs.pr_number }}
+          MATRIX_PR_MERGE_SHA: ${{ steps.fetch_opened_pull_requests.outputs.pr_merge_sha }}
