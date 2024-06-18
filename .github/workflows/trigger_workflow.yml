@@ -1,40 +1,31 @@
-name: Fetch PR Info and Checkout Merge Commits
-
+name: Run Dynamic Number of Jobs
 on:
-  push:
-
+  workflow_dispatch:
+    inputs:
+      number_of_jobs:
+        description: "Number of Jobs"
+        required: true
+        default: "10"
 jobs:
-  fetch_pr_info_and_checkout:
+  generate-job-strategy-matrix:
     runs-on: ubuntu-latest
-    name: Fetch PR Info and Checkout Merge Commits
+    outputs:
+      job-strategy-matrix: ${{ steps.generate.outputs.job-strategy-matrix }}
     steps:
-      - name: 'Fetch all opened pull requests and their merge commit SHAs'
-        shell: bash
-        id: fetch_all_opened_pull_requests
+      - id: generate
         run: |
-          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" \
-          | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
-          
-          while read -r line; do
-            pr_number=$(echo "$line" | awk '{print $1}')
-            pr_merge_sha=$(echo "$line" | awk '{print $2}')
-            echo "$pr_number" >> pr_numbers.txt
-            echo "$pr_merge_sha" >> pr_merge_shas.txt
-          done <<< "$pr_info"
-      
-          echo "Matrix of Pull Request Numbers:"
-          cat pr_numbers.txt
-      
-          echo "Matrix of Merge Commit SHAs:"
-          cat pr_merge_shas.txt
-      
-      - name: Checkout Merge Commits
-        id: checkout_merge_commits
-        run: |
-          while read -r merge_sha; do
-            git checkout $merge_sha
-            # Perform any actions related to the specific merge commit here
-          done < pr_merge_shas.txt
-
-  # Add other jobs if needed...
+          JOB_STRATEGY_MATRIX=$(node -e "let r=[]; for(let i = 1; i <= process.env.NUMBER_OF_JOBS; i++) { r.push(i) }; console.log(JSON.stringify(r));")
+          echo "::set-output name=job-strategy-matrix::$JOB_STRATEGY_MATRIX"
+        env:
+          NUMBER_OF_JOBS: ${{ github.event.inputs.number_of_jobs }}
+  job:
+    needs: generate-job-strategy-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # 6 hour timeout
+    strategy:
+      matrix:
+        job: ${{ fromJson(needs.generate-job-strategy-matrix.outputs.job-strategy-matrix) }}
+      max-parallel: 1 # Run jobs serially
+      # max-parallel: ${{ github.event.inputs.number_of_jobs }} # Run jobs in parallel
+    steps:
+      - run: echo "This is job number ${{ matrix.job }}"
