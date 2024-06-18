@@ -41,8 +41,13 @@ jobs:
           echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
         done
     - name: Matrix generator
-      run : echo "merge-commit:[$(IFS=,; echo "${pr_merge_shas[*]}")]" >> $GITHUB_OUTPUT
-      
+      run: |
+        pr_merge_shas=()
+        for var in $(env | grep ^PULL_REQUEST_MERGE_SHAS_ | sort | awk -F= '{print $1}'); do
+          pr_merge_shas+=("${!var}")
+        done
+        echo "merge-commit:[$(IFS=,; echo "${pr_merge_shas[*]}")]" >> $GITHUB_OUTPUT
+        
   example_matrix:
     runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
