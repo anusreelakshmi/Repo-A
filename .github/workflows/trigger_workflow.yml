@@ -45,6 +45,7 @@ jobs:
     needs: fetch_all_pull_request_shas
     strategy:
       matrix:
+        merge-commit: [$merge_commit]
         runtime: [ linux, mac, windows ]
         include:
           - runtime: linux
