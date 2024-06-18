@@ -43,7 +43,7 @@ jobs:
           # Store the array in the environment variable as a matrix
           echo "PULL_REQUEST_MERGE_SHAS_MATRIX=[" >> $GITHUB_ENV
           for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
-            echo "  [${pr_merge_shas[$i]}]" >> $GITHUB_ENV
+            echo "  \"${pr_merge_shas[$i]}\"" >> $GITHUB_ENV
           done
           echo "]" >> $GITHUB_ENV
 
