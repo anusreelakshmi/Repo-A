@@ -63,10 +63,10 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        matrix: ${{ fromJson(steps.generate_matrix.outputs.matrix) }}
+        merge-commit: ${{ fromJson(steps.generate_matrix.outputs.matrix) }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.merge_commits }}
+          ref: ${{ matrix.merge-commit }}
