@@ -44,8 +44,7 @@ jobs:
           echo "  [${pr_merge_shas[$i]}]" >> $GITHUB_ENV
         done
         echo "]" >> $GITHUB_ENV
-        done
-        
+          
   example_matrix:
     runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
@@ -59,10 +58,9 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit: ${{fromJson(env.PULL_REQUEST_MERGE_SHAS_MATRIX)}}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.merge-commit }}
+          ref: ${{fromJson(run.outputs.PULL_REQUEST_MERGE_SHAS_MATRIX)}}
