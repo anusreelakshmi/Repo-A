@@ -23,6 +23,7 @@ jobs:
     needs: generate-job-strategy-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 360 # 6 hour timeout
+    if: ${{ needs.generate-job-strategy-matrix.outputs.job-strategy-matrix != '[]' && needs.generate-job-strategy-matrix.outputs.job-strategy-matrix != '' }}
     strategy:
       matrix:
         job: ${{ fromJson(needs.generate-job-strategy-matrix.outputs.job-strategy-matrix) }}
