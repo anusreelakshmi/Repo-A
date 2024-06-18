@@ -75,4 +75,4 @@ jobs:
           ref: ${{ matrix.merge-commit }}
           
       - name: Print merge commit
-        run: echo "Merge Commit:${{ matrix.merge-commit }}"
+        run: echo "Merge Commit:${{ merge-commit }}"
