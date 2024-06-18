@@ -18,6 +18,7 @@ jobs:
             os: windows-latest
     steps:
     - name: Fetch Pull Request Merge Commits
+      shell: bash
       id: fetch_pull_requests
       run: |
         pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
