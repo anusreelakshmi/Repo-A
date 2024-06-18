@@ -34,23 +34,20 @@ jobs:
           echo "Pull Request Number: $pr_number"
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
-        # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
         # Store the array in the environment variable
-        for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
-          echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
-        done
+        echo "PR_MERGE_SHAS=$(IFS=,; echo "${pr_merge_shas[*]}")" >> $GITHUB_ENV
+
 
     - name: Matrix generator
-      shell: bash
+      id: generate_matrix
       run: |
-        pr_merge_shas=()
-        for var in $(env | grep ^PULL_REQUEST_MERGE_SHAS_ | sort | awk -F= '{print $1}'); do
-          pr_merge_shas+=("${!var}")
-        done
-        # Use ::set-output to set the output value correctly
-        merge_commit_output="merge-commit:[$(IFS=,; echo "${pr_merge_shas[*]}")]"
-        echo "::set-output name=merge_commit::$merge_commit_output"
+        pr_merge_shas=(${PR_MERGE_SHAS//,/ })
+        json_array=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
+        echo "::set-output name=matrix::{\"merge_commits\": $json_array}"
+      shell: bash
+      env:
+        PR_MERGE_SHAS: ${{ env.PR_MERGE_SHAS }}
+
       
         
   example_matrix:
@@ -66,10 +63,10 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit: ${{ fromJSON(needs.fetch_all_pull_request_shas.outputs.merge-commit) }}
+        matrix: ${{ fromJson(steps.generate_matrix.outputs.matrix) }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.merge-commit }}
+          ref: ${{ matrix.merge_commits }}
