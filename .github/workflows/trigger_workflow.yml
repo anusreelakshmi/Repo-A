@@ -21,6 +21,7 @@ jobs:
 
     steps:
       - name: Fetch all opened pull request numbers and merge commit SHAs
+        shell: bash
         id: fetch_all_pull_requests
         run: |
           pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
