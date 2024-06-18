@@ -73,6 +73,15 @@ jobs:
         with:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit }}
-          
+
       - name: Print merge commit
-        run: echo "Merge Commit:${{ merge-commit }}"
+        run: echo "Merge Commit:${{ matrix.merge-commit }}"
+
+      - name: Print all merge commits
+        run: |
+          merge_commits=(${MERGE_COMMITS})
+          for commit in "${merge_commits[@]}"; do
+            echo $commit
+          done
+        env:
+          MERGE_COMMITS: ${{ toJSON(matrix.merge-commit) }}
