@@ -53,7 +53,7 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit: ${{fromJson(needs.fetch_pull_request.outputs.pr_merge_shas)}}
+        merge-commit: ${{fromJson(needs.fetch_pull_request.outputs.pr_merge_shas.matrix)}}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
