@@ -38,14 +38,13 @@ jobs:
           done <<< "$pr_info"
           
           # Print the merge SHAs in the desired format
-          echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+          echo "merge-commit: [$(IFS=,; echo "\"${pr_merge_shas[*]}\"")]"
           
           # Store the array in the environment variable as a matrix
-          echo "PULL_REQUEST_MERGE_SHAS_MATRIX=[" >> $GITHUB_ENV
+          echo "PULL_REQUEST_MERGE_SHAS_MATRIX=" >> $GITHUB_ENV
           for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
-            echo "  \"${pr_merge_shas[$i]}\"" >> $GITHUB_ENV
+            echo "\"${pr_merge_shas[$i]}\"" >> $GITHUB_ENV
           done
-          echo "]" >> $GITHUB_ENV
 
   example_matrix:
     runs-on: ${{ matrix.os }}
