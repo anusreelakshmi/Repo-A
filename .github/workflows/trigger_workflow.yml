@@ -48,11 +48,19 @@ jobs:
 
 
   example_matrix:
+    runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
     strategy:
       matrix:
+        runtime: [ linux, mac, windows ]
+        include:
+          - runtime: linux
+            os: ubuntu-latest
+          - runtime: mac
+            os: macOS-latest
+          - runtime: windows
+            os: windows-latest
         merge-commit: [4b0eecde6993132bdccb7a9241dbb1a8d12498ec, b318be60202fe0aca86802f341e08393ea7e43d7, 6543dacb85f3bc1532e5ccfe34dfd04a5eabeaa8]
-    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
