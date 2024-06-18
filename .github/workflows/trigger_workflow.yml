@@ -48,6 +48,7 @@ jobs:
 
 
   example_matrix:
+    needs: fetch_all_pull_request_shas
     strategy:
       matrix:
         merge-commit: [4b0eecde6993132bdccb7a9241dbb1a8d12498ec, b318be60202fe0aca86802f341e08393ea7e43d7, 6543dacb85f3bc1532e5ccfe34dfd04a5eabeaa8]
