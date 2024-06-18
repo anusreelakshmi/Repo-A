@@ -73,4 +73,6 @@ jobs:
         with:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit }}
-    
+          
+      - name: Print merge commit
+        run: echo "Merge Commit:${{ matrix.merge-commit }}"
