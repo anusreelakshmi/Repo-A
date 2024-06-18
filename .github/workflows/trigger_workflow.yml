@@ -40,13 +40,18 @@ jobs:
         for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
           echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
         done
+
     - name: Matrix generator
+      shell: bash
       run: |
         pr_merge_shas=()
         for var in $(env | grep ^PULL_REQUEST_MERGE_SHAS_ | sort | awk -F= '{print $1}'); do
           pr_merge_shas+=("${!var}")
         done
-        echo "merge-commit:[$(IFS=,; echo "${pr_merge_shas[*]}")]" >> $GITHUB_OUTPUT
+        # Use ::set-output to set the output value correctly
+        merge_commit_output="merge-commit:[$(IFS=,; echo "${pr_merge_shas[*]}")]"
+        echo "::set-output name=merge_commit::$merge_commit_output"
+      
         
   example_matrix:
     runs-on: ${{ matrix.os }}
