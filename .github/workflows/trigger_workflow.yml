@@ -37,18 +37,17 @@ jobs:
         # Store the array in the environment variable
         echo "PR_MERGE_SHAS=$(IFS=,; echo "${pr_merge_shas[*]}")" >> $GITHUB_ENV
 
-
     - name: Matrix generator
       id: generate_matrix
       run: |
         pr_merge_shas=(${PR_MERGE_SHAS//,/ })
         json_array=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
-        echo "::set-output name=matrix::{\"merge_commits\": $json_array}"
+        echo "{\"merge_commits\": $json_array}" > matrix.json
+        echo "::set-output name=matrix::$(cat matrix.json)"
       shell: bash
       env:
         PR_MERGE_SHAS: ${{ env.PR_MERGE_SHAS }}
 
-      
         
   example_matrix:
     runs-on: ${{ matrix.os }}
@@ -63,7 +62,7 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit: ${{ fromJson(steps.generate_matrix.outputs.matrix) }}
+        merge-commit: ${{ fromJson(needs.generate_matrix.outputs.matrix) }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
