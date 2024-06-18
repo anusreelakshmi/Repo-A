@@ -27,24 +27,30 @@ jobs:
         pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
         "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
         | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
+        
         pr_merge_shas=() # Initialize an empty array
+  
         while read -r pr; do
           pr_number=$(echo $pr | awk '{print $1}')
           pr_merge_sha=$(echo $pr | awk '{print $2}')
+          
           echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
           echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
-          pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
+          
+          # Append merge SHA to the array
+          pr_merge_shas+=("$pr_merge_sha")
+          
           echo "Pull Request Number: $pr_number"
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
-        # Store the array in the environment variable
-        for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
-          echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
-        done
-        # Print the array
-        echo "PULL_REQUEST_MERGE_SHAS=${pr_merge_shas[*]}"
-        # Print the first element of the array
-        echo "First element of the array: ${pr_merge_shas[0]}"
+  
+        # Join the array into a comma-separated string
+        pr_merge_shas_str=$(IFS=,; echo "${pr_merge_shas[*]}")
+        
+        # Store the comma-separated string in the environment
+        echo "PULL_REQUEST_MERGE_SHAS=${pr_merge_shas_str}" >> $GITHUB_ENV
+        
+        echo "All Pull Request Merge SHAs: $pr_merge_shas_str"
 
 
   example_matrix:
