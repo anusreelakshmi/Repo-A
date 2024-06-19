@@ -33,7 +33,7 @@ jobs:
           echo "First element of the array: ${pr_merge_shas[0]}"
 
   example_matrix:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: fetch_all_pull_request_shas
     strategy:
       matrix:
@@ -41,7 +41,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
 
   checkout_pull_request:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: example_matrix
     strategy:
       matrix:
