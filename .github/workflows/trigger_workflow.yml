@@ -2,30 +2,30 @@ name: Build
 
 on:
   push:
-   
+
 
 jobs:
   get-prs:
     runs-on: ubuntu-latest
     outputs:
-      prs-sha: ${{ steps.get-prs.outputs.prs-sha }}
+      pr_info: ${{ steps.get-prs.outputs.pr_info }}
     steps:
       - name: Fetch open PRs
         id: get-prs
         run: |
-          PRS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" \
-                | jq -r '.[] | .merge_commit_sha')
+          PR_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
+                    | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
 
-          echo "::set-output name=prs-sha::$PRS"
+          echo "::set-output name=pr_info::$PR_INFO"
 
-  print-sha:
+  print-pr-info:
     needs: get-prs
     runs-on: ubuntu-latest
     steps:
-      - name: Print PRs merge commit SHA
+      - name: Print PRs info
         run: |
-          PRS_SHA="${{ needs.get-prs.outputs.prs-sha }}"
+          PR_INFO="${{ needs.get-prs.outputs.pr_info }}"
 
-          echo "Merge commit SHA of opened PRs:"
-          echo "$PRS_SHA"
+          echo "Open PRs information:"
+          echo "$PR_INFO"
