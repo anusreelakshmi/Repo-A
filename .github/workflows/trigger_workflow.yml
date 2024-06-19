@@ -40,8 +40,7 @@ jobs:
     - name: Set up matrix for PR merge SHAs
       id: setup_matrix
       run: |
-        merge_shas=($(jq -r '.merge_commit | @sh' <<< "${{ steps.fetch_all_pull_requests.outputs.merge-commit }}"))
-        echo "::set-output name=matrix::$(jq -n --argjson shas "$(IFS=,; echo "[\"${merge_shas[*]}\"]")" '{"include": $shas}')"
+        echo "matrix=$(echo $merge-shas | jq -c '{ include: [.[]] }')" >> $GITHUB_ENV
 
         
   example_matrix:
