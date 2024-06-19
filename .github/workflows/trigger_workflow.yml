@@ -8,54 +8,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [ linux, mac, windows ]
-        include:
-          - runtime: linux
-            os: ubuntu-latest
-          - runtime: mac
-            os: macOS-latest
-          - runtime: windows
-            os: windows-latest
+        os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-    - name: Fetch all opened pull request numbers and merge commit SHAs
-      shell: bash
-      id: fetch_all_pull_requests
-      run: |
-        pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
-        | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
-        pr_merge_shas=() # Initialize an empty array
-        while read -r pr; do
-          pr_number=$(echo $pr | awk '{print $1}')
-          pr_merge_sha=$(echo $pr | awk '{print $2}')
-          echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
-          echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
-          pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-          echo "Pull Request Number: $pr_number"
-          echo "Pull Request Merge SHA: $pr_merge_sha"
-        done <<< "$pr_info"
-        # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+      - name: Fetch all opened pull request numbers and merge commit SHAs
+        id: fetch_pull_requests
+        run: |
+          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
+          | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
+          pr_merge_shas=()
+          while read -r pr; do
+            pr_number=$(echo $pr | awk '{print $1}')
+            pr_merge_sha=$(echo $pr | awk '{print $2}')
+            echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
+            echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
+            pr_merge_shas+=("$pr_merge_sha")
+            echo "Pull Request Number: $pr_number"
+            echo "Pull Request Merge SHA: $pr_merge_sha"
+          done <<< "$pr_info"
+          echo "::set-output name=pr_merge_shas::$(printf '%s\n' "${pr_merge_shas[@]}")"
 
-        # Store the pr_merge_shas array into a matrix
-        echo "::set-output name=matrix::$(jq -nc --arg shas "${pr_merge_shas[*]}" '{"include": $shas | split(" ") | map({merge_sha: .})}')"
-
+      - name: Set matrix output
+        id: set-matrix
+        run: echo "matrix=$(jq -n --argjson shas "${{ needs.fetch_all_pull_request_shas.outputs.pr_merge_shas }}" '{"include": $shas | map({pr_merge_shas: .})}')" >> $GITHUB_ENV
         
   example_matrix:
     runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
     strategy:
       matrix:
-        runtime: [ linux, mac, windows ]
-        include:
-          - runtime: linux
-            os: ubuntu-latest
-          - runtime: mac
-            os: macOS-latest
-          - runtime: windows
-            os: windows-latest
-        # merge-commit: ${{fromJson(needs.fetch_all_pull_request_shas.outputs.pr_merge_shas)}}
-        pr_merge_shas: ${{ fromJson(needs.fetch_all_pull_requests.outputs.matrix) }}
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+      include:
+        - os: ubuntu-latest
+        - os: macOS-latest
+        - os: windows-latest
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
