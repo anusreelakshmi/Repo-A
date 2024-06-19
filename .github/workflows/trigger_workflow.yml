@@ -35,7 +35,7 @@ jobs:
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
         # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+        echo "merge-commit: [$(IFS=, ; echo "${pr_merge_shas[*]}")]"
         
   example_matrix:
     runs-on: ${{ matrix.os }}
