@@ -1,17 +1,32 @@
-name: build
-on: push
+name: Build
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+
 jobs:
-  job1:
+  get-prs:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      prs-sha: ${{ steps.get-prs.outputs.prs-sha }}
     steps:
-      - id: set-matrix
-        run: echo "matrix={\"include\":[{\"project\":\"foo\",\"config\":\"Debug\"},{\"project\":\"bar\",\"config\":\"Release\"}]}" >> $GITHUB_OUTPUT
-  job2:
-    needs: job1
+      - name: Fetch open PRs
+        id: get-prs
+        run: |
+          PRS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" \
+                | jq -r '.[] | .merge_commit_sha')
+
+          echo "::set-output name=prs-sha::$PRS"
+
+  print-sha:
+    needs: get-prs
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJSON(needs.job1.outputs.matrix) }}
     steps:
-      - run: echo "Matrix - Project ${{ matrix.project }}, Config ${{ matrix.config }}"
+      - name: Print PRs merge commit SHA
+        run: |
+          PRS_SHA="${{ needs.get-prs.outputs.prs-sha }}"
+
+          echo "Merge commit SHA of opened PRs:"
+          echo "$PRS_SHA"
