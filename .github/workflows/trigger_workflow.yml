@@ -31,7 +31,7 @@ jobs:
       - name: Set matrix output
         id: set-matrix
         run: |
-          echo "matrix=$(jq -n --argjson shas '${{ needs.fetch_all_pull_request_shas.outputs.pr_merge_shas }}' '{"include": $shas | map({pr_merge_shas: .})}')" >> $GITHUB_ENV
+          echo "matrix=$(jq -n --argjson shas "${{ needs.fetch_all_pull_request_shas.outputs.pr_merge_shas }}" '{"include": $shas | map({pr_merge_shas: .})}')" >> $GITHUB_ENV
 
   example_matrix:
     runs-on: ${{ matrix.os }}
