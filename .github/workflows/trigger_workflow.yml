@@ -35,7 +35,13 @@ jobs:
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
         # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(printf "%s, " "${pr_merge_shas[@]}")]" | sed 's/, $//'
+        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+
+    - name: Set up matrix for PR merge SHAs
+      id: setup_matrix
+      run: |
+        merge_shas=($(jq -r '.merge_commit | @sh' <<< "${{ steps.fetch_all_pull_requests.outputs.merge-commit }}"))
+        echo "::set-output name=matrix::$(jq -n --argjson shas "$(IFS=,; echo "[\"${merge_shas[*]}\"]")" '{"include": $shas}')"
 
         
   example_matrix:
