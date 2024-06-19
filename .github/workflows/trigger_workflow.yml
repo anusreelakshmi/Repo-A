@@ -35,11 +35,13 @@ jobs:
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
         # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+        merge_shas_json="[\"$(IFS=\",\"; echo "${pr_merge_shas[*]}")\"]"
+        echo "{\"merge-commit\": $merge_shas_json}" > output.json
         # Store the array in the environment variable
         for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
           echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
         done
+
         
   example_matrix:
     runs-on: ${{ matrix.os }}
@@ -54,9 +56,10 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
+        merge-commit: ${{fromJson(needs.fetch_all_pull_request_shas.outputs.pr_merge_shas)}}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{fromJson(needs.fetch_all_pull_request_shas.outputs.pr_merge_shas || '[]')}}
+          ref: ${{ matrix.merge-commit }}
