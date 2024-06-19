@@ -35,12 +35,13 @@ jobs:
           echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
         # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+        shas_json=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
+        echo "MERGE_SHAS=$shas_json" >> $GITHUB_ENV
 
     - name: Set up matrix for PR merge SHAs
       id: setup_matrix
       run: |
-        echo "matrix=$(echo $merge-shas | jq -c '{ include: [.[]] }')" >> $GITHUB_ENV
+        echo "matrix=$(jq -c '{ include: $MERGE_SHAS }' <<< $MERGE_SHAS)" >> $GITHUB_ENV
 
         
   example_matrix:
