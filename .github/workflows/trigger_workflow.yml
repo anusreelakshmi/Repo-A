@@ -37,7 +37,15 @@ jobs:
         run: |
           echo "Merge Commit SHAs:"
           echo "${{ toJson(needs.populate_matrix.outputs.matrix['merge-commit']) }}"
-    
+
+      - name: Check Matrix
+        run: |
+          if [[ -n "${{ toJson(needs.populate_matrix.outputs.matrix['merge-commit']) }}" ]]; then
+            echo "Matrix is not empty"
+          else
+            echo "Matrix is empty or null"
+          fi
+
           
       - name: Use matrix in subsequent steps
         run: |
