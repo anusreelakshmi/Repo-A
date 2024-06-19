@@ -1,8 +1,9 @@
-name: Build.
+name: Build
 
 on:
   push:
-
+    branches:
+      - main  # Trigger on pushes to the main branch
 
 jobs:
   get-prs:
@@ -19,13 +20,25 @@ jobs:
 
           echo "::set-output name=pr_info::$PR_INFO"
 
-  print-pr-info:
+  run-job-per-pr:
     needs: get-prs
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pr_info: ${{ fromJson(needs.get-prs.outputs.pr_info) }}
     steps:
-      - name: Print PRs info
-        run: |
-          PR_INFO="${{ needs.get-prs.outputs.pr_info }}"
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-          echo "Open PRs information:"
-          echo "$PR_INFO"
+      - name: Run job for each PR
+        run: |
+          # Extract PR number and merge commit SHA from the pr_info string
+          PR_NUMBER=$(echo "${{ matrix.pr_info }}" | awk '{print $1}')
+          MERGE_COMMIT_SHA=$(echo "${{ matrix.pr_info }}" | awk '{print $2}')
+
+          echo "Running job for PR $PR_NUMBER with merge commit SHA $MERGE_COMMIT_SHA"
+
+          # Perform actions specific to each PR, using $MERGE_COMMIT_SHA as needed
+          # Replace the following echo with your actual job commands
+          echo "Example command using merge commit SHA: git show $MERGE_COMMIT_SHA"
+
