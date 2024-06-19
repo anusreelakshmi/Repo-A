@@ -37,10 +37,10 @@ jobs:
         # Print the merge SHAs in the desired format
         echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
 
-    - name: Set up matrix for PR merge SHAs
-      id: setup_matrix
-      run: |
-        echo "matrix=$(jq -c '{ include: $MERGE_SHAS }' <<< $MERGE_SHAS)" >> $GITHUB_ENV
+        # Store the pr_merge_shas array into a matrix
+        echo "::set-output name=matrix::$(jq -nc --arg shas "${pr_merge_shas[*]}" '{"include": $shas | split(" ") | map({merge_sha: .})}')"
+
+  
 
         
   example_matrix:
