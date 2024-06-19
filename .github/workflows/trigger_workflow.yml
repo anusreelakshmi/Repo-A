@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pr_info: ${{ fromJson(needs.get-prs.outputs.pr_info) }}
+        pr_info: ${{ needs.get-prs.outputs.pr_info }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
