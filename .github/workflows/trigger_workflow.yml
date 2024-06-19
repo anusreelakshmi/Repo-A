@@ -1,43 +1,62 @@
-name: Build
-
+name: Fetch All Open Pull Request SHAs
 on:
   push:
-
-
+  workflow_dispatch:
 jobs:
-  get-prs:
-    runs-on: ubuntu-latest
-    outputs:
-      pr_info: ${{ steps.get-prs.outputs.pr_info }}
+  fetch_all_pull_request_shas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [ linux, mac, windows ]
+        include:
+          - runtime: linux
+            os: ubuntu-latest
+          - runtime: mac
+            os: macOS-latest
+          - runtime: windows
+            os: windows-latest
     steps:
-      - name: Fetch open PRs
-        id: get-prs
-        run: |
-          PR_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                    "https://api.github.com/repos/OpenLiberty/liberty-tools-intellij/pulls?state=open&sort=created&direction=desc&per_page=100" \
-                    | jq -r '.[] | .merge_commit_sha')
-
-          echo "::set-output name=pr_info::$PR_INFO"
-
-  run-job-per-pr:
-    needs: get-prs
-    runs-on: ubuntu-latest
+    - name: Fetch all opened pull request numbers and merge commit SHAs
+      shell: bash
+      id: fetch_all_pull_requests
+      run: |
+        pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
+        | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
+        pr_merge_shas=() # Initialize an empty array
+        while read -r pr; do
+          pr_number=$(echo $pr | awk '{print $1}')
+          pr_merge_sha=$(echo $pr | awk '{print $2}')
+          echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
+          echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
+          pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
+          echo "Pull Request Number: $pr_number"
+          echo "Pull Request Merge SHA: $pr_merge_sha"
+        done <<< "$pr_info"
+        # Print the merge SHAs in the desired format
+        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
+        # Store the array in the environment variable
+        for ((i=0; i<${#pr_merge_shas[@]}; i++)); do
+          echo "PULL_REQUEST_MERGE_SHAS_${i}=${pr_merge_shas[$i]}" >> $GITHUB_ENV
+        done
+        
+  example_matrix:
+    runs-on: ${{ matrix.os }}
+    needs: fetch_all_pull_request_shas
     strategy:
       matrix:
-        pr_info: ${{ needs.get-prs.outputs.pr_info }}
+        runtime: [ linux, mac, windows ]
+        include:
+          - runtime: linux
+            os: ubuntu-latest
+          - runtime: mac
+            os: macOS-latest
+          - runtime: windows
+            os: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Run job for each PR
-        run: |
-          # Extract PR number and merge commit SHA from the pr_info string
-          PR_NUMBER=$(echo "${{ matrix.pr_info }}" | awk '{print $1}')
-          MERGE_COMMIT_SHA=$(echo "${{ matrix.pr_info }}" | awk '{print $2}')
-
-          echo "Running job for PR $PR_NUMBER with merge commit SHA $MERGE_COMMIT_SHA"
-
-          # Perform actions specific to each PR, using $MERGE_COMMIT_SHA as needed
-          # Replace the following echo with your actual job commands
-          echo "Example command using merge commit SHA: git show $MERGE_COMMIT_SHA"
-
+      - name: Checkout pull request merge commits
+        uses: actions/checkout@v3
+        with:
+          repository: redhat-developer/lsp4ij
+          ref: ${{fromJson(needs.fetch_all_pull_request_shas.outputs.pr_merge_shas || '[]')}}
