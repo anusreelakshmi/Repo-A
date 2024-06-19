@@ -26,17 +26,17 @@ jobs:
         | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
         pr_merge_shas=() # Initialize an empty array
         while read -r pr; do
-          pr_number=$(echo $pr | awk '{print $1}')
-          pr_merge_sha=$(echo $pr | awk '{print $2}')
-          echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
-          echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
-          pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-          echo "Pull Request Number: $pr_number"
-          echo "Pull Request Merge SHA: $pr_merge_sha"
-        done <<< "$pr_info"
-        # Print the merge SHAs in the desired format
-        shas_json=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
-        echo "MERGE_SHAS=$shas_json" >> $GITHUB_ENV
+            pr_number=$(echo $pr | awk '{print $1}')
+            pr_merge_sha=$(echo $pr | awk '{print $2}')
+            echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
+            echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
+            pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
+            echo "Pull Request Number: $pr_number"
+            echo "Pull Request Merge SHA: $pr_merge_sha"
+          done <<< "$pr_info"
+          # Print the merge SHAs in the desired format
+          shas_json=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
+          echo "merge-shas=$shas_json" >> $GITHUB_ENV
 
     - name: Set up matrix for PR merge SHAs
       id: setup_matrix
