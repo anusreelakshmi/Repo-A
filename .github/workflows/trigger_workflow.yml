@@ -6,7 +6,7 @@ jobs:
   fetch_all_pull_request_shas:
     runs-on: ubuntu-latest
     outputs:
-      merge_shas: ${{ steps.fetch_all_pull_requests.outputs.merge_shas }}
+      sha_count: ${{ steps.set_sha_count.outputs.sha_count }}
     steps:
     - name: Fetch all opened pull request numbers and merge commit SHAs
       id: fetch_all_pull_requests
@@ -15,50 +15,33 @@ jobs:
         "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
         | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
         pr_merge_shas=() # Initialize an empty array
+        count=0
         while read -r pr; do
           pr_number=$(echo $pr | awk '{print $1}')
           pr_merge_sha=$(echo $pr | awk '{print $2}')
-          echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
-          echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
           pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-          echo "Pull Request Number: $pr_number"
-          echo "Pull Request Merge SHA: $pr_merge_sha"
+          echo "PULL_REQUEST_MERGE_SHA_${count}=$pr_merge_sha" >> $GITHUB_ENV
+          count=$((count + 1))
         done <<< "$pr_info"
-        # Convert the array to a comma-separated string
-        merge_shas_csv=$(IFS=,; echo "${pr_merge_shas[*]}")
-        echo "merge-commit: $merge_shas_csv"
-        # Set the output variable
-        echo "::set-output name=merge_shas::$merge_shas_csv"
+        echo "::set-output name=sha_count::$count"
 
   example_matrix:
-    runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        runtime: [ linux, mac, windows ]
-        include:
-          - runtime: linux
-            os: ubuntu-latest
-          - runtime: mac
-            os: macOS-latest
-          - runtime: windows
-            os: windows-latest
+        sha_index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # Assume a maximum of 10 SHAs for demonstration
     steps:
-      - name: Set merge commits from output
-        id: set_merge_commits
-        run: echo "MERGE_COMMITS=${{ needs.fetch_all_pull_request_shas.outputs.merge_shas }}" >> $GITHUB_ENV
-
       - name: Checkout pull request merge commits
+        if: ${{ matrix.sha_index < needs.fetch_all_pull_request_shas.outputs.sha_count }}
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          # Process each SHA separately
-          ref: ${{ matrix.merge-commit }}
+          ref: ${{ env['PULL_REQUEST_MERGE_SHA_' + matrix.sha_index] }}
 
-      - name: Process each merge commit
+      - name: Process merge commit
+        if: ${{ matrix.sha_index < needs.fetch_all_pull_request_shas.outputs.sha_count }}
         run: |
-          IFS=',' read -r -a merge_shas <<< "${{ env.MERGE_COMMITS }}"
-          for sha in "${merge_shas[@]}"; do
-            echo "Processing merge commit SHA: $sha"
-            # Add your processing logic here
-          done
+          sha=${{ env['PULL_REQUEST_MERGE_SHA_' + matrix.sha_index] }}
+          echo "Processing merge commit SHA: $sha"
+          # Add your processing logic here
