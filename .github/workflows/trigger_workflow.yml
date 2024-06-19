@@ -56,9 +56,7 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit: 
-          - ${{ env.PULL_REQUEST_MERGE_SHAS_0 }}
-          - ${{ env.PULL_REQUEST_MERGE_SHAS_1 }}
+        merge-commit: [1,2]
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
