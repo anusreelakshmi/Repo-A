@@ -1,34 +1,45 @@
-name: Checkout PR Merge Commits
+name: CI
 
 on:
   push:
-
+    
 
 jobs:
-  checkout-pr-commits:
+  build:
     runs-on: ubuntu-latest
-    outputs:
-      matrix_value: ${{ steps.fetch-prs.outputs.pr_shas }}
-    strategy:
-      matrix:
-        sha:
-          - ${{ fromJson(needs.checkout-pr-commits.outputs.matrix_value) }}
 
     steps:
-      - name: Fetch all open PRs
-        id: fetch-prs
-        run: |
-          PR_SHAS=()
-          for pr_number in $(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" | jq -r '.[].number'); do
-            pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
-            PR_SHAS+=("$pr_sha")
-          done
-          PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
-          PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
-          echo "::set-output name=pr_shas::$PR_SHAS_STRING"
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Checkout pull request merge commits
-        uses: actions/checkout@v3
-        with:
-          repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.sha }}
+    - name: Fetch all open PRs
+      id: fetch-prs
+      run: |
+        PR_SHAS=()
+        for pr_number in $(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" | jq -r '.[].number'); do
+          pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
+          PR_SHAS+=("$pr_sha")
+        done
+        echo "PR_SHAS=(${PR_SHAS[@]})" >> $GITHUB_ENV
+
+    - name: Set up matrix
+      id: set-matrix
+      run: |
+        matrix=$(printf '{"include": ['; for sha in "${PR_SHAS[@]}"; do printf '{"sha": "%s"},' "$sha"; done | sed 's/,$//'; printf '] }')
+        echo "::set-output name=matrix::$matrix"
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.build.outputs.matrix) }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ matrix.sha }}
+
+    - name: Run tests
+      run: |
+        echo "Running tests for SHA: ${{ matrix.sha }}"
+        # Add your test commands here
