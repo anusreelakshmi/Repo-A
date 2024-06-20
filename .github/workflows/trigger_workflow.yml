@@ -1,41 +1,27 @@
-name: Fetch Merge Commit SHAs of Open PRs
+name: Fetch PR Merge SHAs
 
 on:
-  push:
+  push: 
 
 jobs:
-  fetch-pr-merge-sha:
+  fetch-pr-shas:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Fetch PRs information
+      
+      - name: Set up Git credentials
+        run: git config --global credential.helper store
+      
+      - name: Fetch all open PRs
         id: fetch-prs
         run: |
-          PAGE=1
-          PRS=()
-
-          while true; do
-            response=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&page=$PAGE")
-            page_prs=$(echo "$response" | jq -r '.[].merge_commit_sha')
-
-            # Break loop if no more PRs or empty response
-            if [ -z "$page_prs" ]; then
-              break
-            fi
-
-            # Add PRs from this page to the PRS array
-            PRS+=("$page_prs")
-
-            PAGE=$((PAGE + 1))
+          PR_SHAS=()
+          for pr_number in $(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" | jq -r '.[].number'); do
+            pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
+            PR_SHAS+=("$pr_sha")
           done
-
-          echo "::set-output name=prs::$(echo "${PRS[@]}")"
-
-      - name: Output PRs array
-        run: |
-          echo "Merge commit SHAs of open PRs:"
-          for pr in "${{ steps.fetch-prs.outputs.prs }}"; do
-            echo "- $pr"
-          done
+          echo "::set-output name=pr_shas::${PR_SHAS[*]}"
+        
+      - name: Print PR SHAs
+        run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
