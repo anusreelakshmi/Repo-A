@@ -1,7 +1,7 @@
 name: Fetch PR Merge SHAs
 
 on:
-  push:
+  push: 
 
 jobs:
   fetch-pr-shas:
@@ -28,20 +28,16 @@ jobs:
       - name: Print PR SHAs
         run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
 
-      - name: Use PR SHAs as matrix
-        id: matrix-params
-        run: echo "::set-output name=matrix::$(echo '${{ steps.fetch-prs.outputs.pr_shas }}' | jq -c '.')"
-
   example_matrix:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runtime }}
     needs: fetch-pr-shas
     strategy:
       matrix:
-        pr_sha: ${{ fromJson(needs.fetch-pr-shas.outputs.matrix) }}
-        os: [ ubuntu-latest, macOS-latest, windows-latest ]
+        runtime: [ ubuntu-latest, macOS-latest, windows-latest ]
+        PR-SHAs: ${{ steps.fetch-prs.outputs.pr_shas }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.pr_sha }}
+          ref: ${{ matrix.PR-SHAs }}
