@@ -1,15 +1,14 @@
-name: Fetch PR Merge SHAs
+name: Process PRs
 
 on:
-  push: 
+  push:
 
 jobs:
-  fetch-pr-shas:
+  process-prs:
     runs-on: ubuntu-latest
+    outputs:
+      pr_shas: ${{ steps.fetch-prs.outputs.pr_shas }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      
       - name: Fetch all open PRs
         id: fetch-prs
         run: |
@@ -21,20 +20,17 @@ jobs:
           PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
           PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
           echo "::set-output name=pr_shas::$PR_SHAS_STRING"
-        
-      - name: Print PR SHAs
-        run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
 
-  example_matrix:
-    runs-on: ${{ matrix.os }}
-    needs: fetch-pr-shas
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macOS-latest, windows-latest ]
-      
-    steps:
-      - name: Checkout pull request merge commits
-        uses: actions/checkout@v3
-        with:
-          repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.PR_SHAS }}
+      - name: Use PR_SHAS array as matrix
+        id: setup-matrix
+        run: |
+          echo "${{ steps.fetch-prs.outputs.pr_shas }}" | jq -c '.[]' | while read sha; do
+            echo "::set-output name=matrix_value::$sha"
+          done
+
+      - name: Print matrix values
+        run: |
+          echo "Matrix values:"
+          echo "${{ steps.setup-matrix.outputs.matrix_value }}"
+
+
