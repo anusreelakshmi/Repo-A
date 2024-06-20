@@ -30,7 +30,6 @@ jobs:
     needs: fetch-pr-shas
     strategy:
       matrix:
-        pr_sha: ${{ toJson(matrix.PR_SHAS) }}
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
       
     steps:
