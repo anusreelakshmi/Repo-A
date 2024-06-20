@@ -1,44 +1,41 @@
 name: Fetch Merge Commit SHAs of Open PRs
 
 on:
-  push: 
+  workflow_dispatch:  # Allows manual triggering of workflow
 
 jobs:
-  fetch-pr-merge-shas:
+  fetch-pr-merge-sha:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Fetch Merge Commit SHAs of Open PRs
-        id: fetch-shas
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const prs = await github.paginate("GET /repos/{owner}/{repo}/pulls", {
-              owner: "redhat-developer",
-              repo: "lsp4ij",
-              state: "open",
-            });
+      - name: Fetch PRs information
+        id: fetch-prs
+        run: |
+          PAGE=1
+          PRS=()
 
-            if (prs.length === 0) {
-              return core.info("No open pull requests found.");
-            }
+          while true; do
+            response=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&page=$PAGE")
+            page_prs=$(echo "$response" | jq -r '.[].merge_commit_sha')
 
-            const shaList = [];
-            for (const pr of prs) {
-              if (pr.merge_commit_sha) {
-                shaList.push({
-                  number: pr.number,
-                  merge_commit_sha: pr.merge_commit_sha,
-                });
-              }
-            }
+            # Break loop if no more PRs or empty response
+            if [ -z "$page_prs" ]; then
+              break
+            fi
 
-            core.setOutput("sha_list", JSON.stringify(shaList));
-            core.info(`Found ${shaList.length} PR(s) with merge commit SHAs.`);
-      
-      - name: Print Merge Commit SHAs
+            # Add PRs from this page to the PRS array
+            PRS+=("$page_prs")
+
+            PAGE=$((PAGE + 1))
+          done
+
+          echo "::set-output name=prs::$(echo "${PRS[@]}")"
+
+      - name: Output PRs array
         run: |
           echo "Merge commit SHAs of open PRs:"
-          echo ${{ steps.fetch-shas.outputs.sha_list }}
+          for pr in "${{ steps.fetch-prs.outputs.prs }}"; do
+            echo "- $pr"
+          done
