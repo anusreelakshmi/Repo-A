@@ -49,4 +49,4 @@ jobs:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit-sha }}
       - name: Print merge commit SHA
-        run: echo "Processing merge commit SHA: ${{ matrix.merge-commit-sha }}"
+        run: echo "Processing merge commit SHA:${{ matrix.merge-commit-sha }}"
