@@ -1,34 +1,41 @@
-name: Get PR Merge SHAs
+name: Fetch PR Merge SHAs
 
 on:
-  push:
-  
-jobs:
-  get-pr-merge-shas:
-    runs-on: ubuntu-latest
+  push: 
 
+jobs:
+  fetch-pr-shas:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Get PRs
-        id: get-prs
+      
+      - name: Fetch all open PRs
+        id: fetch-prs
         run: |
-          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                        -H "Accept: application/vnd.github.v3+json" \
-                        "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open")
-          echo "::set-output name=response::$response"
+          PR_SHAS=()
+          for pr_number in $(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" | jq -r '.[].number'); do
+            pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
+            PR_SHAS+=("$pr_sha")
+          done
+          PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
+          PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
+          echo "::set-output name=pr_shas::$PR_SHAS_STRING"
+        
+      - name: Print PR SHAs
+        run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
 
-      - name: Extract PR merge SHAs
-        id: extract-shas
-        run: |
-          echo "${{ steps.get-prs.outputs.response }}" \
-            | jq -r '.[] | .merge_commit_sha' \
-            | while read sha; do
-                echo "::set-output name=shas::$sha"
-              done
-
-      - name: Display PR merge SHAs
-        run: |
-          echo "Merge SHAs of open PRs:"
-          echo "${{ steps.extract-shas.outputs.shas }}"
+  example_matrix:
+    runs-on: ${{ matrix.os }}
+    needs: fetch-pr-shas
+    strategy:
+      matrix:
+        pr_sha: ${{ toJson(matrix.PR_SHAS) }}
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
+      
+    steps:
+      - name: Checkout pull request merge commits
+        uses: actions/checkout@v3
+        with:
+          repository: redhat-developer/lsp4ij
+          ref: ${{ toJson(matrix.PR_SHAS) }}
