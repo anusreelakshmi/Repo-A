@@ -37,4 +37,4 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: redhat-developer/lsp4ij
-          ref: ${{ toJson(matrix.PR_SHAS) }}
+          ref: ${{ matrix.PR_SHAS }}
