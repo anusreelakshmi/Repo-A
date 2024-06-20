@@ -30,18 +30,19 @@ jobs:
         done
 
 
-  # test:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix: ${{ fromJson(needs.build.outputs.matrix) }}
-  #   steps:
-  #   - name: Checkout repository
-  #     uses: actions/checkout@v2
-  #     with:
-  #       ref: ${{ matrix.sha }}
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: 
+        merge-commit: ${{ fromJson(${PR_SHAS[@]}) }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ matrix.merge-commit }}
 
-  #   - name: Run tests
-  #     run: |
-  #       echo "Running tests for SHA: ${{ matrix.sha }}"
-  #       # Add your test commands here
+    - name: Run tests
+      run: |
+        echo "Running tests for SHA: ${{ matrix.sha }}"
+        # Add your test commands here
