@@ -1,8 +1,7 @@
 name: Fetch PR Merge SHAs
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Runs every day at midnight (adjust per your needs)
+  push: 
 
 jobs:
   fetch-pr-shas:
