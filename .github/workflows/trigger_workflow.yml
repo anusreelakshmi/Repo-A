@@ -1,15 +1,20 @@
-name: Fetch PR Merge SHAs
+name: Checkout PR Merge Commits
 
 on:
-  push: 
+  push:
+
 
 jobs:
-  fetch-pr-shas:
+  checkout-pr-commits:
     runs-on: ubuntu-latest
+    outputs:
+      matrix_value: ${{ steps.fetch-prs.outputs.pr_shas }}
+    strategy:
+      matrix:
+        sha:
+          - ${{ fromJson(needs.checkout-pr-commits.outputs.matrix_value) }}
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      
       - name: Fetch all open PRs
         id: fetch-prs
         run: |
@@ -21,6 +26,9 @@ jobs:
           PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
           PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
           echo "::set-output name=pr_shas::$PR_SHAS_STRING"
-        
-      - name: Print PR SHAs
-        run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
+
+      - name: Checkout pull request merge commits
+        uses: actions/checkout@v3
+        with:
+          repository: redhat-developer/lsp4ij
+          ref: ${{ matrix.sha }}
