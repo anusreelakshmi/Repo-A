@@ -35,7 +35,7 @@ jobs:
           fi
           
           echo "matrix_shas=$matrix_shas" >> $GITHUB_ENV
-          echo "::set-output name=matrix_shas::$matrix_shas"
+          echo "matrix_shas=$matrix_shas" >> $GITHUB_OUTPUT
           
   example_matrix:
     runs-on: ubuntu-latest
@@ -50,4 +50,4 @@ jobs:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit-sha }}
       - name: Print merge commit SHA
-        run: echo "Processing merge commit SHA:${{ matrix.merge-commit-sha }}"
+        run: echo "Processing merge commit SHA: ${{ matrix.merge-commit-sha }}"
