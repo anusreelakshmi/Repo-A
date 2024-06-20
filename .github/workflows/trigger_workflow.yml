@@ -1,52 +1,52 @@
-name: Fetch All Open Pull Request SHAs
+name: Fetch Merge Commit SHAs of Open PRs
+
 on:
-  push:
-  workflow_dispatch:
+  push: 
 
 jobs:
-  fetch_all_pull_request_shas:
+  fetch-pr-merge-shas:
     runs-on: ubuntu-latest
-    outputs:
-      matrix_shas: ${{ steps.fetch_all_pull_requests.outputs.matrix_shas }}
     steps:
-      - name: Fetch all opened pull request numbers and merge commit SHAs
-        shell: bash
-        id: fetch_all_pull_requests
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Fetch Merge Commit SHAs of Open PRs
+        id: fetch-shas
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prs = await github.paginate("GET /repos/{owner}/{repo}/pulls", {
+              owner: "redhat-developer",
+              repo: "lsp4ij",
+              state: "open",
+            });
+
+            if (prs.length === 0) {
+              return core.info("No open pull requests found.");
+            }
+
+            const shaList = [];
+            for (const pr of prs) {
+              if (pr.merge_commit_sha) {
+                shaList.push(pr.merge_commit_sha);
+              }
+            }
+
+            core.setOutput("sha_list", shaList.join("\n"));
+            core.info(`Found ${shaList.length} PR(s) with merge commit SHAs.`);
+
+      - name: Set up Matrix
+        id: setup-matrix
         run: |
-          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
-          | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
-          
-          pr_merge_shas=() # Initialize an empty array
-          while read -r pr; do
-            pr_number=$(echo $pr | awk '{print $1}')
-            pr_merge_sha=$(echo $pr | awk '{print $2}')
-            pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-          done <<< "$pr_info"
-          
-          # Convert array to JSON format
-          matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s 'join(",")')
-          echo "::set-output name=matrix_shas::[$matrix_shas]"
-  example_matrix:
-    runs-on: ${{ matrix.os }}
-    needs: fetch_all_pull_request_shas
+          echo "::set-output name=matrix::$(echo '${{ steps.fetch-shas.outputs.sha_list }}' | jq -R 'split("\n")')"
+
+  use-shas-in-matrix:
+    needs: fetch-pr-merge-shas
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        runtime: [ linux, mac, windows ]
-        include:
-          - runtime: linux
-            os: ubuntu-latest
-          - runtime: mac
-            os: macOS-latest
-          - runtime: windows
-            os: windows-latest
-        merge-commit-sha: ${{ fromJson(needs.fetch_all_pull_request_shas.outputs.matrix_shas) }}
+        sha: ${{fromJson(needs.fetch-pr-merge-shas.outputs.sha_list)}}
     steps:
-      - name: Print merge commit SHA
-        run: echo "Processing merge commit SHA:${{ matrix.merge-commit-sha }}"
-        
-      - name: Checkout pull request merge commits
-        uses: actions/checkout@v3
-        with:
-          repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.merge-commit-sha }}
+      - name: Print SHA in Matrix
+        run: |
+          echo "Using SHA: ${{ matrix.sha }}"
