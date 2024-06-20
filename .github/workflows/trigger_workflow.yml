@@ -1,7 +1,7 @@
-name: Fetch Merge Commit SHAs of Open PRs
+name: Fetch Merge Commit SHAs and Use in Strategy Matrix
 
 on:
-  push: 
+  push:
 
 jobs:
   fetch-pr-merge-shas:
@@ -32,21 +32,26 @@ jobs:
               }
             }
 
-            core.setOutput("sha_list", shaList.join("\n"));
+            core.setOutput("sha_list", shaList.join(","));
             core.info(`Found ${shaList.length} PR(s) with merge commit SHAs.`);
-
-      - name: Set up Matrix
-        id: setup-matrix
+      
+      - name: Print Merge Commit SHAs
         run: |
-          echo "::set-output name=matrix::$(echo '${{ steps.fetch-shas.outputs.sha_list }}' | jq -R 'split("\n")')"
+          echo "Merge commit SHAs of open PRs:"
+          echo "${{ steps.fetch-shas.outputs.sha_list }}"
 
-  use-shas-in-matrix:
+      - name: Use Merge Commit SHAs in Strategy Matrix
+        id: use-in-matrix
+        run: |
+          echo "::set-output name=matrix::$(echo '${{ steps.fetch-shas.outputs.sha_list }}' | tr ',' '\n' | awk '{print \"  - sha: \"$1}')"
+      
+  example-job:
     needs: fetch-pr-merge-shas
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        sha: ${{fromJson(needs.fetch-pr-merge-shas.outputs.sha_list)}}
+        ${{fromJson(steps.use-in-matrix.outputs.matrix)}}
+
     steps:
-      - name: Print SHA in Matrix
-        run: |
-          echo "Using SHA: ${{ matrix.sha }}"
+      - name: Print SHA in Job
+        run: echo "SHA in this job:${{ matrix.sha }}"
