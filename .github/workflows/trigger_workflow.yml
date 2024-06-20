@@ -1,18 +1,18 @@
 name: Fetch PR Merge SHAs
 
 on:
-  push: 
+  push:
+  
 
 jobs:
   fetch-pr-shas:
     runs-on: ubuntu-latest
+    outputs:
+      pr_shas: ${{ steps.fetch-prs.outputs.pr_shas }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      
-      - name: Set up Git credentials
-        run: git config --global credential.helper store
-      
+
       - name: Fetch all open PRs
         id: fetch-prs
         run: |
@@ -24,9 +24,6 @@ jobs:
           PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
           PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
           echo "::set-output name=pr_shas::$PR_SHAS_STRING"
-        
-      - name: Print PR SHAs
-        run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
 
   example_matrix:
     runs-on: ${{ matrix.runtime }}
@@ -34,10 +31,17 @@ jobs:
     strategy:
       matrix:
         runtime: [ ubuntu-latest, macOS-latest, windows-latest ]
-        PR-SHAs: ${{ steps.fetch-prs.outputs.pr_shas }}
+        include:
+          - runtime: ubuntu-latest
+            pr_shas: ${{ needs.fetch-pr-shas.outputs.pr_shas }}
+          - runtime: macOS-latest
+            pr_shas: ${{ needs.fetch-pr-shas.outputs.pr_shas }}
+          - runtime: windows-latest
+            pr_shas: ${{ needs.fetch-pr-shas.outputs.pr_shas }}
     steps:
-      - name: Checkout pull request merge commits
-        uses: actions/checkout@v3
-        with:
-          repository: redhat-developer/lsp4ij
-          ref: ${{ matrix.PR-SHAs }}
+    - name: Checkout pull request merge commits
+      uses: actions/checkout@v3
+      with:
+        repository: redhat-developer/lsp4ij
+        ref: ${{ matrix.pr_shas }}
+
