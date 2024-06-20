@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         pr_sha: ${{ fromJson(needs.fetch-pr-shas.outputs.matrix) }}
-        os: ${{ matrix.runtime }}
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
