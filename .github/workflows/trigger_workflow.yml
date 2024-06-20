@@ -21,13 +21,21 @@ jobs:
           while read -r pr; do
             pr_number=$(echo $pr | awk '{print $1}')
             pr_merge_sha=$(echo $pr | awk '{print $2}')
-            pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
+            if [ "$pr_merge_sha" != "null" ]; then
+              pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array if it's not null
+            fi
           done <<< "$pr_info"
           
-          # Convert array to JSON format
-          matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
+          if [ ${#pr_merge_shas[@]} -eq 0 ]; then
+            echo "No open pull requests with merge commits found."
+            matrix_shas="[]"
+          else
+            # Convert array to JSON format
+            matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
+          fi
+          
           echo "::set-output name=matrix_shas::$matrix_shas"
-
+          
   example_matrix:
     runs-on: ubuntu-latest
     needs: fetch_all_pull_request_shas
