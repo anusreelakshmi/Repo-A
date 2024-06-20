@@ -1,7 +1,8 @@
 name: Fetch PR Merge SHAs
 
 on:
-  push: 
+  schedule:
+    - cron: '0 0 * * *'  # Runs every day at midnight (adjust per your needs)
 
 jobs:
   fetch-pr-shas:
@@ -21,7 +22,9 @@ jobs:
             pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
             PR_SHAS+=("$pr_sha")
           done
-          echo "::set-output name=pr_shas::${PR_SHAS[*]}"
+          PR_SHAS_STRING=$(printf ", %s" "${PR_SHAS[@]}")
+          PR_SHAS_STRING="[${PR_SHAS_STRING:2}]"
+          echo "::set-output name=pr_shas::$PR_SHAS_STRING"
         
       - name: Print PR SHAs
         run: echo "PR SHAs:${{ steps.fetch-prs.outputs.pr_shas }}"
