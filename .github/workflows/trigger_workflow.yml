@@ -22,24 +22,26 @@ jobs:
         done
         echo "PR_SHAS=(${PR_SHAS[@]})" >> $GITHUB_ENV
 
-    - name: Set up matrix
-      id: set-matrix
+    - name: Process each PR SHA
       run: |
-        matrix=$(printf '{"include": ['; for sha in "${PR_SHAS[@]}"; do printf '{"sha": "%s"},' "$sha"; done | sed 's/,$//'; printf '] }')
-        echo "::set-output name=matrix::$matrix"
+        for sha in ${PR_SHAS[@]}; do
+          echo "Processing SHA: $sha"
+          # Add your processing commands here
+        done
 
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.build.outputs.matrix) }}
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        ref: ${{ matrix.sha }}
 
-    - name: Run tests
-      run: |
-        echo "Running tests for SHA: ${{ matrix.sha }}"
-        # Add your test commands here
+  # test:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix: ${{ fromJson(needs.build.outputs.matrix) }}
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v2
+  #     with:
+  #       ref: ${{ matrix.sha }}
+
+  #   - name: Run tests
+  #     run: |
+  #       echo "Running tests for SHA: ${{ matrix.sha }}"
+  #       # Add your test commands here
