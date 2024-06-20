@@ -31,10 +31,18 @@ jobs:
       run: echo "MATRIX_SHAS=${{ steps.fetch_all_pull_requests.outputs.matrix_shas }}" >> $GITHUB_ENV
 
   example_matrix:
+    runs-on: ${{ matrix.os }}
     needs: fetch_all_pull_request_shas
-    runs-on: ubuntu-latest
     strategy:
       matrix:
+        runtime: [ linux, mac, windows ]
+        include:
+          - runtime: linux
+            os: ubuntu-latest
+          - runtime: mac
+            os: macOS-latest
+          - runtime: windows
+            os: windows-latest
         merge-commit-sha: ${{ fromJson(steps.fetch_all_pull_requests.outputs.matrix_shas) }}
     steps:
       - name: Checkout pull request merge commits
@@ -42,6 +50,5 @@ jobs:
         with:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit-sha }}
-
       - name: Print merge commit SHA
         run: echo "Processing merge commit SHA:${{ matrix.merge-commit-sha }}"
