@@ -2,33 +2,31 @@ name: Fetch All Open Pull Request SHAs
 on:
   push:
   workflow_dispatch:
+
 jobs:
   fetch_all_pull_request_shas:
     runs-on: ubuntu-latest
     outputs:
-      sha_count: ${{ steps.set_sha_count.outputs.sha_count }}
+      matrix_shas: ${{ steps.fetch_all_pull_requests.outputs.matrix_shas }}
     steps:
-    - name: Fetch all opened pull request numbers and merge commit SHAs
-      shell: bash
-      id: fetch_all_pull_requests
-      run: |
-        pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
-        | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
-        
-        pr_merge_shas=() # Initialize an empty array
-        while read -r pr; do
-          pr_number=$(echo $pr | awk '{print $1}')
-          pr_merge_sha=$(echo $pr | awk '{print $2}')
-          pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-        done <<< "$pr_info"
-        
-        # Convert array to JSON format
-        matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s 'join(",")')
-        echo "::set-output name=matrix_shas::[$matrix_shas]"
-
-    - name: Set matrix variable
-      run: echo "MATRIX_SHAS=${{ steps.fetch_all_pull_requests.outputs.matrix_shas }}" >> $GITHUB_ENV
+      - name: Fetch all opened pull request numbers and merge commit SHAs
+        shell: bash
+        id: fetch_all_pull_requests
+        run: |
+          pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open&sort=created&direction=desc&per_page=100" \
+          | jq -r '.[] | "\(.number) \(.merge_commit_sha)"')
+          
+          pr_merge_shas=() # Initialize an empty array
+          while read -r pr; do
+            pr_number=$(echo $pr | awk '{print $1}')
+            pr_merge_sha=$(echo $pr | awk '{print $2}')
+            pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
+          done <<< "$pr_info"
+          
+          # Convert array to JSON format
+          matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s 'join(",")')
+          echo "::set-output name=matrix_shas::[$matrix_shas]"
 
   example_matrix:
     runs-on: ${{ matrix.os }}
@@ -43,7 +41,7 @@ jobs:
             os: macOS-latest
           - runtime: windows
             os: windows-latest
-        merge-commit-sha: ${{ fromJson(steps.fetch_all_pull_requests.outputs.matrix_shas) }}
+        merge-commit-sha: ${{ fromJson(needs.fetch_all_pull_request_shas.outputs.matrix_shas) }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
@@ -51,4 +49,4 @@ jobs:
           repository: redhat-developer/lsp4ij
           ref: ${{ matrix.merge-commit-sha }}
       - name: Print merge commit SHA
-        run: echo "Processing merge commit SHA:${{ matrix.merge-commit-sha }}"
+        run: echo "Processing merge commit SHA: ${{ matrix.merge-commit-sha }}"
