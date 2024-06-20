@@ -20,33 +20,22 @@ jobs:
         while read -r pr; do
           pr_number=$(echo $pr | awk '{print $1}')
           pr_merge_sha=$(echo $pr | awk '{print $2}')
-          echo "PULL_REQUEST_NUMBER=$pr_number" >> $GITHUB_ENV
-          echo "PULL_REQUEST_MERGE_SHA=$pr_merge_sha" >> $GITHUB_ENV
           pr_merge_shas+=("$pr_merge_sha") # Append merge SHA to the array
-          echo "Pull Request Number: $pr_number"
-          echo "Pull Request Merge SHA: $pr_merge_sha"
         done <<< "$pr_info"
         
-        # Print the merge SHAs in the desired format
-        echo "merge-commit: [$(IFS=,; echo "${pr_merge_shas[*]}")]"
-        
-        # Convert array to JSON format and store it in the environment variable
-        pr_merge_shas_json=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s .)
-        echo "PULL_REQUEST_MERGE_SHAS_JSON=$pr_merge_shas_json" >> $GITHUB_ENV
-        
-        # Store the array in a matrix-friendly format
+        # Convert array to JSON format
         matrix_shas=$(printf '%s\n' "${pr_merge_shas[@]}" | jq -R . | jq -s 'join(",")')
-        echo "matrix_shas=[$matrix_shas]" >> $GITHUB_ENV
+        echo "::set-output name=matrix_shas::[$matrix_shas]"
 
     - name: Set matrix variable
-      run: echo "MATRIX_SHAS=${{ env.matrix_shas }}" >> $GITHUB_ENV
+      run: echo "MATRIX_SHAS=${{ steps.fetch_all_pull_requests.outputs.matrix_shas }}" >> $GITHUB_ENV
 
   example_matrix:
     needs: fetch_all_pull_request_shas
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        merge-commit-sha: ${{ fromJson(env.MATRIX_SHAS) }}
+        merge-commit-sha: ${{ fromJson(steps.fetch_all_pull_requests.outputs.matrix_shas) }}
     steps:
       - name: Checkout pull request merge commits
         uses: actions/checkout@v3
