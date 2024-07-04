@@ -1,45 +1,91 @@
-name: CI
-
+name: PR notification
 on:
   push:
-    
 
 jobs:
-  build:
+  fetch_all_pull_request_shas:
     runs-on: ubuntu-latest
-
+    outputs:
+      pr_details: ${{ steps.extract.outputs.pr_details }}
+      is_empty: ${{ steps.extract.outputs.is_empty }}
+    env:
+      API_URL: https://api.github.com/repos/OpenLiberty/liberty-tools-vscode/pulls
+    name: PR Details
     steps:
-    - name: Checkout repository.
-      uses: actions/checkout@v2
-
-    - name: Fetch all open PRs
-      id: fetch-prs
-      run: |
-        PR_SHAS=()
-        for pr_number in $(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls?state=open" | jq -r '.[].number'); do
-          pr_sha=$(curl -s "https://api.github.com/repos/redhat-developer/lsp4ij/pulls/$pr_number" | jq -r '.merge_commit_sha')
-          PR_SHAS+=("$pr_sha")
-        done
-        # Export the PR_SHAS array as a space-separated string
-        echo "PR_SHAS=${PR_SHAS[@]}" >> $GITHUB_ENV
-
-    - name: Set up matrix
-      id: set-matrix
-      run: |
-        # Read the PR_SHAS environment variable and convert it to a JSON array
-        PR_SHAS_JSON=$(jq -n --arg shas "${PR_SHAS}" '$shas | split(" ") | map({ "merge-commit": . })')
-        echo "matrix=$PR_SHAS_JSON" >> $GITHUB_ENV
-        echo "::set-output name=matrix::$PR_SHAS_JSON"
-
-  checkout:
-    runs-on: ubuntu-latest
-    needs: build
+      - name: Extract PR numbers and merge_commit_shas
+        shell: bash
+        id: extract
+        run: |
+          # Fetch PR details from the GitHub API
+          pr_infos=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${{ env.API_URL }}")
+          
+          # Extract PR numbers and merge_commit_sha values, excluding draft pull requests
+          pr_numbers=$(echo "$pr_infos" | jq -r '.[] | select(.draft == false) | {number: .number, sha: .merge_commit_sha} | @base64')          
+          
+          # Array to store PRs that are not drafts and have no merge conflicts
+          declare -a valid_prs=()
+          
+          for pr in $pr_numbers; do
+            # Decode the base64 encoded JSON string
+            pr=$(echo "$pr" | base64 --decode)
+          
+            # Extract PR number
+            number=$(echo "$pr" | jq -r '.number')
+          
+            url="${{ env.API_URL }}/$number"
+            pr_detail=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$url")
+          
+            mergeable_state=$(jq -r '.mergeable_state' <<< "$pr_detail")
+          
+            if [[ "$mergeable_state" != "dirty" ]]; then
+            pr_number=$(jq -r '.number' <<< "$pr_detail")
+            pr_sha=$(jq -r '.merge_commit_sha' <<< "$pr_detail")
+            valid_prs+=("{\"number\": \"$pr_number\", \"sha\": \"$pr_sha\"}")
+          else
+              echo "::warning file=::PR #$(jq -r '.number' <<< "$pr_detail") has conflicts."
+          fi
+          done
+          
+          # Create a JSON string from the array
+          pr_details_array=$(IFS=,; echo "[${valid_prs[*]}]")
+          # Print Pr number and SHA values
+          echo "$pr_details_array" | jq '.[]'
+          # Set the output for further steps
+          echo "pr_details=$pr_details_array" >> $GITHUB_OUTPUT
+          
+          # Check if pr_details_array is empty
+          if [ $(echo "$pr_details_array" | jq length) -eq 0 ]; then
+            echo "::warning file=::There are no open PRs, or all the existing PRs are either drafts or have merge conflicts. Skipping further actions."
+            echo "is_empty=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_empty=false" >> $GITHUB_OUTPUT
+          fi
+          
+  call-build-workflow-for-each-merge-commit-sha:
+    if: ${{ needs.fetch_all_pull_request_shas.outputs.is_empty == 'false' }}
+    needs: fetch_all_pull_request_shas
+    runs-on: ${{ matrix.os }}
     strategy:
-      matrix: ${{ fromJson(needs.build.outputs.matrix) }}
-
-    steps:
-    - name: Checkout pull request merge commits
-      uses: actions/checkout@v3
-      with:
-        repository: redhat-developer/lsp4ij
-        ref: ${{ matrix.merge-commit }}
+      fail-fast: false
+      matrix:
+        runtime: [linux, mac, windows]
+        include:
+          - runtime: linux
+            os: ubuntu-latest
+            reportName: linux-test-report
+          - runtime: mac
+            os: macOS-latest
+            reportName: mac-test-report
+          - runtime: windows
+            os: windows-latest
+            reportName: windows-test-report
+        pr_details: ${{ fromJson(needs.fetch_all_pull_request_shas.outputs.pr_details) }}
+          
+    name: Running tests
+    steps:  
+      - name: Checkout lsp4ij
+        uses: actions/checkout@v4.1.7
+        with:
+          repository: OpenLiberty/liberty-tools-intellij
+          path: lsp4ij
+          ref: ${{ matrix.pr_details.sha }}
